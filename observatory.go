@@ -19,14 +19,12 @@ func NewObservatory[T comparable](keygen func() string) *Observatory[T] {
 	}
 }
 
-// Observer is a func type change handler
-type Observer[T any] func(id string, new, old T)
-
 func (this *Observatory[T]) callback(key string, new T, old T) {
 	for _, o := range this.observe {
 		o(key, new, old)
 	}
 }
+
 func (this *Observatory[T]) set(key string, t T) {
 	this.callback(key, t, this.m[key])
 	if Zero[T]() == t {
@@ -36,8 +34,43 @@ func (this *Observatory[T]) set(key string, t T) {
 	}
 }
 
-// Get returns the value for a string
+// Count returns the number of items
+func (this *Observatory[T]) Count() int { return len(this.m) }
+
+// Filter uses a Tester to return all passing values
+func (this *Observatory[T]) Filter(test Tester[T]) (ts []T) {
+	this.sync.Lock()
+	for _, v := range this.m {
+		if test(v) {
+			ts = append(ts, v)
+			break
+		}
+	}
+	this.sync.Unlock()
+	return
+}
+
+// First uses a Tester to return the first passing value
+func (this *Observatory[T]) First(test Tester[T]) (t T) {
+	this.sync.Lock()
+	for _, v := range this.m {
+		if test(v) {
+			t = v
+			break
+		}
+	}
+	this.sync.Unlock()
+	return
+}
+
+// Get returns the value for a key
 func (this *Observatory[T]) Get(key string) T { return this.m[key] }
+
+// Observe adds an observer
+func (this *Observatory[T]) Observe(f Observer[T]) { this.observe = append(this.observe, f) }
+
+// Remove deletes a key
+func (this *Observatory[T]) Remove(key string) { this.Set(key, Zero[T]()) }
 
 // Set changes the value for a key
 func (this *Observatory[T]) Set(key string, t T) {
@@ -46,7 +79,7 @@ func (this *Observatory[T]) Set(key string, t T) {
 	this.sync.Unlock()
 }
 
-// Store creates a new key
+// Store creates a new key for the value
 func (this *Observatory[T]) Store(t T) (key string) {
 	this.sync.Lock()
 	for ok := true; ok; _, ok = this.m[key] {
@@ -57,8 +90,9 @@ func (this *Observatory[T]) Store(t T) (key string) {
 	return
 }
 
-// Remove deletes a string,*T
-func (this *Observatory[T]) Remove(k string) { this.Set(k, Zero[T]()) }
-
-// Observe adds an observer
-func (this *Observatory[T]) Observe(f Observer[T]) { this.observe = append(this.observe, f) }
+// Sync calls a function inside the mutex lock state
+func (this *Observatory[T]) Sync(f func()) {
+	this.sync.Lock()
+	f()
+	this.sync.Unlock()
+}
