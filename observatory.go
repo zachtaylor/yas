@@ -21,23 +21,23 @@ func NewObservatory[T any](keygen func() string) *Observatory[T] {
 
 func (this *Observatory[T]) callback(key string, new T, old T) {
 	for _, o := range this.observe {
-		o(key, new, old)
+		o.Observe(key, new, old)
 	}
 }
 
-func (this *Observatory[T]) set(key string, t T) {
-	this.callback(key, t, this.m[key])
-	this.m[key] = t
+func (this *Observatory[T]) set(key string, val T) {
+	this.callback(key, val, this.m[key])
+	this.m[key] = val
 }
 
 // Count returns the number of items
 func (this *Observatory[T]) Count() int { return len(this.m) }
 
 // Filter uses a Tester to return all passing values' keys
-func (this *Observatory[T]) Filter(test Tester[T]) (keys []string) {
+func (this *Observatory[T]) Filter(t Tester[T]) (keys []string) {
 	this.sync.Lock()
 	for k, v := range this.m {
-		if test(v) {
+		if t.Test(v) {
 			keys = append(keys, k)
 		}
 	}
@@ -46,11 +46,11 @@ func (this *Observatory[T]) Filter(test Tester[T]) (keys []string) {
 }
 
 // First uses a Tester to return the first passing value
-func (this *Observatory[T]) First(test Tester[T]) (key string, t T) {
+func (this *Observatory[T]) First(t Tester[T]) (key string, val T) {
 	this.sync.Lock()
 	for k, v := range this.m {
-		if test(v) {
-			key, t = k, v
+		if t.Test(v) {
+			key, val = k, v
 			break
 		}
 	}
@@ -79,11 +79,11 @@ func (this *Observatory[T]) Remove(keys ...string) {
 }
 
 // RemoveTest deletes keys that pass the test
-func (this *Observatory[T]) RemoveTest(test Tester[T]) {
+func (this *Observatory[T]) RemoveTest(t Tester[T]) {
 	keys := make([]string, 0)
 	this.sync.Lock()
 	for k, v := range this.m {
-		if test(v) {
+		if t.Test(v) {
 			keys = append(keys, k)
 		}
 	}
