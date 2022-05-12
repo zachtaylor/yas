@@ -3,7 +3,7 @@ package yas
 import "sync"
 
 // Observatory is a generic observable map
-type Observatory[T comparable] struct {
+type Observatory[T any] struct {
 	keygen  func() string
 	m       map[string]T
 	sync    sync.Mutex
@@ -11,7 +11,7 @@ type Observatory[T comparable] struct {
 }
 
 // NewObservatory creates an empty *Observatory[T]
-func NewObservatory[T comparable](keygen func() string) *Observatory[T] {
+func NewObservatory[T any](keygen func() string) *Observatory[T] {
 	return &Observatory[T]{
 		keygen:  keygen,
 		m:       make(map[string]T),
@@ -27,23 +27,18 @@ func (this *Observatory[T]) callback(key string, new T, old T) {
 
 func (this *Observatory[T]) set(key string, t T) {
 	this.callback(key, t, this.m[key])
-	if Zero[T]() == t {
-		delete(this.m, key)
-	} else {
-		this.m[key] = t
-	}
+	this.m[key] = t
 }
 
 // Count returns the number of items
 func (this *Observatory[T]) Count() int { return len(this.m) }
 
-// Filter uses a Tester to return all passing values
-func (this *Observatory[T]) Filter(test Tester[T]) (ts []T) {
+// Filter uses a Tester to return all passing values' keys
+func (this *Observatory[T]) Filter(test Tester[T]) (keys []string) {
 	this.sync.Lock()
-	for _, v := range this.m {
+	for k, v := range this.m {
 		if test(v) {
-			ts = append(ts, v)
-			break
+			keys = append(keys, k)
 		}
 	}
 	this.sync.Unlock()
@@ -51,11 +46,11 @@ func (this *Observatory[T]) Filter(test Tester[T]) (ts []T) {
 }
 
 // First uses a Tester to return the first passing value
-func (this *Observatory[T]) First(test Tester[T]) (t T) {
+func (this *Observatory[T]) First(test Tester[T]) (key string, t T) {
 	this.sync.Lock()
-	for _, v := range this.m {
+	for k, v := range this.m {
 		if test(v) {
-			t = v
+			key, t = k, v
 			break
 		}
 	}
@@ -69,8 +64,34 @@ func (this *Observatory[T]) Get(key string) T { return this.m[key] }
 // Observe adds an observer
 func (this *Observatory[T]) Observe(f Observer[T]) { this.observe = append(this.observe, f) }
 
-// Remove deletes a key
-func (this *Observatory[T]) Remove(key string) { this.Set(key, Zero[T]()) }
+func (this *Observatory[T]) remove(key string) {
+	this.callback(key, Zero[T](), this.m[key])
+	delete(this.m, key)
+}
+
+// Remove deletes keys
+func (this *Observatory[T]) Remove(keys ...string) {
+	this.sync.Lock()
+	for _, key := range keys {
+		this.remove(key)
+	}
+	this.sync.Unlock()
+}
+
+// RemoveTest deletes keys that pass the test
+func (this *Observatory[T]) RemoveTest(test Tester[T]) {
+	keys := make([]string, 0)
+	this.sync.Lock()
+	for k, v := range this.m {
+		if test(v) {
+			keys = append(keys, k)
+		}
+	}
+	for _, key := range keys {
+		this.remove(key)
+	}
+	this.sync.Unlock()
+}
 
 // Set changes the value for a key
 func (this *Observatory[T]) Set(key string, t T) {
