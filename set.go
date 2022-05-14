@@ -3,7 +3,8 @@ package yas
 // Set is a map[T]struct{}
 type Set[T comparable] map[T]struct{}
 
-var emptyStruct = struct{}{}
+// NewSet creates an empty Set[T]
+func NewSet[T comparable]() Set[T] { return Set[T](make(map[T]struct{})) }
 
 // Has checks value is in Set
 func (s Set[T]) Has(t T) bool {

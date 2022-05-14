@@ -1,5 +1,7 @@
 package yas
 
+var emptyStruct = struct{}{}
+
 // Observer is an interface for observing a generic type
 type Observer[T any] interface {
 	Observe(id string, new, old T)
