@@ -83,3 +83,12 @@ func (m *SyncMap[T]) Sync(f func()) {
 	f()
 	m.sync.Unlock()
 }
+
+// Each calls a function, once for every value, inside the mutex lock state
+func (m *SyncMap[T]) Each(f func(id string, v T)) {
+	m.sync.Lock()
+	for k, v := range m.m {
+		f(k, v)
+	}
+	m.sync.Unlock()
+}

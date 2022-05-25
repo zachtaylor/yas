@@ -104,3 +104,12 @@ func (o *Observatory[T]) Sync(f func()) {
 	f()
 	o.sync.Unlock()
 }
+
+// Each calls a function, once for every value, inside the mutex lock state
+func (o *Observatory[T]) Each(f func(id string, v T)) {
+	o.sync.Lock()
+	for k, v := range o.m {
+		f(k, v)
+	}
+	o.sync.Unlock()
+}

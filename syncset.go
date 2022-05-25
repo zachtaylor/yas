@@ -46,3 +46,19 @@ func (s *SyncSet[T]) Slice() []T {
 	s.sync.Unlock()
 	return slice
 }
+
+// Sync calls a function inside the mutex lock state
+func (s *SyncSet[T]) Sync(f func()) {
+	s.sync.Lock()
+	f()
+	s.sync.Unlock()
+}
+
+// Each calls a function, once for every value, inside the mutex lock state
+func (s *SyncSet[T]) Each(f func(v T)) {
+	s.sync.Lock()
+	for v := range s.m {
+		f(v)
+	}
+	s.sync.Unlock()
+}

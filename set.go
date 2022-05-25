@@ -27,3 +27,10 @@ func (s Set[T]) Slice() []T {
 	}
 	return slice
 }
+
+// Each calls a function once for every value
+func (s Set[T]) Each(f func(v T)) {
+	for v := range s {
+		f(v)
+	}
+}
