@@ -63,7 +63,7 @@ func (o *Observatory[T]) Get(key string) T { return o.m[key] }
 func (o *Observatory[T]) Observe(f Observer[T]) { o.observe = append(o.observe, f) }
 
 func (o *Observatory[T]) remove(key string) {
-	o.callback(key, o.m[key], Zero[T]())
+	o.callback(key, Zero[T](), o.m[key])
 	delete(o.m, key)
 }
 
